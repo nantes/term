@@ -2,13 +2,30 @@
 class Terminal {
     constructor() {
         this.terminal = document.getElementById('terminal');
-        this.prompt = 'C:\\> ';
+        this.prompt = 'C:\\>';
         this.commandHistory = [];
         this.historyIndex = 0;
+        this.isProcessingCommand = false;
         this.initialize();
     }
 
     initialize() {
+        // Clear any existing content except the initial header
+        const header = this.terminal.querySelector('.output');
+        this.terminal.innerHTML = '';
+        if (header) {
+            this.terminal.appendChild(header);
+        } else {
+            // Create default header if it doesn't exist
+            const output = document.createElement('div');
+            output.className = 'output';
+            output.innerHTML = `
+                <p>Microsoft(R) MS-DOS(R) Version 6.22</p>
+                <p>(C)Copyright Microsoft Corp 1981-1994. All rights reserved.</p>
+            `;
+            this.terminal.appendChild(output);
+        }
+        
         // Create input line
         this.createNewInputLine();
         this.setupEventListeners();
@@ -16,11 +33,35 @@ class Terminal {
     }
 
     createNewInputLine() {
+        if (this.isProcessingCommand) return;
+        
         const inputLine = document.createElement('div');
         inputLine.className = 'input-line';
-        inputLine.innerHTML = `${this.prompt}<input type="text" class="command-input" autofocus>`;
+        
+        const promptSpan = document.createElement('span');
+        promptSpan.className = 'prompt';
+        promptSpan.textContent = this.prompt + ' ';
+        
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.className = 'command-input';
+        input.spellcheck = false;
+        input.autocapitalize = 'off';
+        input.autocomplete = 'off';
+        
+        const cursor = document.createElement('span');
+        cursor.className = 'cursor';
+        cursor.textContent = '_';
+        
+        inputLine.appendChild(promptSpan);
+        inputLine.appendChild(input);
+        inputLine.appendChild(cursor);
+        
         this.terminal.appendChild(inputLine);
-        this.currentInput = inputLine.querySelector('input');
+        this.currentInput = input;
+        
+        // Auto-focus and position cursor at the end
+        this.focusOnInput();
     }
 
     setupEventListeners() {
@@ -28,40 +69,99 @@ class Terminal {
         
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
+                e.preventDefault();
                 this.handleCommand();
             } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
                 this.navigateHistory('up');
-                e.preventDefault();
             } else if (e.key === 'ArrowDown') {
-                this.navigateHistory('down');
                 e.preventDefault();
+                this.navigateHistory('down');
+            } else if (e.key === 'Tab') {
+                e.preventDefault();
+                // Tab completion could be implemented here
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                if (this.currentInput) {
+                    this.currentInput.value = '';
+                }
+            }
+        });
+        
+        // Handle input changes to update cursor position
+        this.terminal.addEventListener('input', (e) => {
+            if (e.target.classList.contains('command-input')) {
+                this.updateCursorPosition();
             }
         });
     }
-
-    focusOnInput() {
-        if (this.currentInput) {
-            this.currentInput.focus();
+    
+    updateCursorPosition() {
+        const cursor = this.terminal.querySelector('.cursor');
+        if (cursor) {
+            // Simple blink animation
+            cursor.style.visibility = cursor.style.visibility === 'hidden' ? 'visible' : 'hidden';
+            setTimeout(() => {
+                cursor.style.visibility = 'visible';
+            }, 200);
         }
     }
 
-    handleCommand() {
-        const command = this.currentInput.value.trim();
-        if (command === '') return;
+    focusOnInput() {
+        if (this.currentInput && !this.currentInput.disabled) {
+            this.currentInput.focus();
+            
+            // Ensure cursor is visible
+            const cursor = this.terminal.querySelector('.cursor');
+            if (cursor) {
+                cursor.style.visibility = 'visible';
+                // Reset animation
+                cursor.style.animation = 'none';
+                void cursor.offsetHeight; // Trigger reflow
+                cursor.style.animation = 'blink 1s step-end infinite';
+            }
+        }
+    }
 
-        // Add command to history
-        this.commandHistory.push(command);
-        this.historyIndex = this.commandHistory.length;
+    async handleCommand() {
+        if (this.isProcessingCommand) return;
+        
+        const inputElement = this.currentInput;
+        const command = inputElement.value.trim();
+        
+        if (command === '') {
+            // Just add a new prompt if empty
+            this.addLine(`${this.prompt}`, 'prompt-line');
+            this.createNewInputLine();
+            return;
+        }
+        
+        // Disable input while processing
+        this.isProcessingCommand = true;
+        inputElement.disabled = true;
+        
+        try {
+            // Add command to history if it's different from the last command
+            if (this.commandHistory[this.commandHistory.length - 1] !== command) {
+                this.commandHistory.push(command);
+            }
+            this.historyIndex = this.commandHistory.length;
 
-        // Display the command in the terminal
-        this.addLine(`${this.prompt}${command}`, 'command');
-        
-        // Process the command
-        this.processCommand(command);
-        
-        // Create a new input line
-        this.createNewInputLine();
-        this.scrollToBottom();
+            // Display the command in the terminal
+            this.addLine(`${this.prompt} ${command}`, 'command');
+            
+            // Process the command
+            await this.processCommand(command);
+            
+        } catch (error) {
+            console.error('Error processing command:', error);
+            this.addLine(`Error: ${error.message}`, 'error');
+        } finally {
+            // Create a new input line
+            this.isProcessingCommand = false;
+            this.createNewInputLine();
+            this.scrollToBottom();
+        }
     }
 
     processCommand(command) {
@@ -177,32 +277,60 @@ class Terminal {
     }
 
     navigateHistory(direction) {
-        if (this.commandHistory.length === 0) return;
-
+        if (this.commandHistory.length === 0 || !this.currentInput) return;
+        
+        let newIndex = this.historyIndex;
+        
         if (direction === 'up' && this.historyIndex > 0) {
-            this.historyIndex--;
+            newIndex = this.historyIndex - 1;
         } else if (direction === 'down' && this.historyIndex < this.commandHistory.length - 1) {
-            this.historyIndex++;
+            newIndex = this.historyIndex + 1;
         } else if (direction === 'down' && this.historyIndex === this.commandHistory.length - 1) {
-            this.historyIndex++;
+            newIndex = this.commandHistory.length;
             this.currentInput.value = '';
+            this.historyIndex = newIndex;
             return;
         } else {
             return;
         }
-
-        this.currentInput.value = this.commandHistory[this.historyIndex];
-        // Move cursor to end of input
-        const length = this.currentInput.value.length;
-        this.currentInput.setSelectionRange(length, length);
+        
+        // Update the input value if we have a valid history item
+        if (newIndex >= 0 && newIndex < this.commandHistory.length) {
+            this.currentInput.value = this.commandHistory[newIndex];
+            this.historyIndex = newIndex;
+            
+            // Move cursor to end of input
+            const length = this.currentInput.value.length;
+            this.currentInput.setSelectionRange(length, length);
+        } else if (newIndex === this.commandHistory.length) {
+            this.currentInput.value = '';
+            this.historyIndex = newIndex;
+        }
     }
 
     addLine(text, className = '') {
         const line = document.createElement('div');
         if (className) line.className = className;
-        line.textContent = text;
-        this.terminal.insertBefore(line, this.currentInput.parentNode);
+        
+        // Handle multi-line text with proper line breaks
+        const lines = text.split('\n');
+        lines.forEach((lineText, index) => {
+            if (index > 0) {
+                line.appendChild(document.createElement('br'));
+            }
+            line.appendChild(document.createTextNode(lineText));
+        });
+        
+        // Insert before the current input line if it exists
+        const inputLine = this.currentInput ? this.currentInput.closest('.input-line') : null;
+        if (inputLine) {
+            this.terminal.insertBefore(line, inputLine);
+        } else {
+            this.terminal.appendChild(line);
+        }
+        
         this.scrollToBottom();
+        return line;
     }
 
     scrollToBottom() {

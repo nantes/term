@@ -4,6 +4,13 @@
     padding: 0;
     box-sizing: border-box;
     font-family: 'Courier New', monospace;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+html, body {
+    height: 100%;
+    overflow: hidden;
 }
 
 body {
@@ -14,6 +21,7 @@ body {
     height: 100vh;
     margin: 0;
     padding: 20px;
+    overflow: hidden;
 }
 
 /* Terminal Container */
@@ -22,11 +30,12 @@ body {
     max-width: 800px;
     height: 500px;
     background-color: #000;
-    border: 1px solid #00ff00;
-    box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+    border: 1px solid #00aa00;
+    box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    position: relative;
 }
 
 /* Terminal Header */
@@ -98,31 +107,35 @@ body {
 
 /* Terminal Text and Cursor */
 .prompt {
+    display: inline;
+    color: #00ff00;
+    white-space: pre;
+}
+
+.input-line {
     display: flex;
     align-items: center;
-    margin: 10px 0;
+    margin: 5px 0;
+    white-space: pre;
 }
 
 .cursor {
     display: inline-block;
-    width: 10px;
+    width: 8px;
     height: 16px;
     background-color: #00ff00;
-    margin-left: 2px;
+    margin-left: 1px;
     animation: blink 1s step-end infinite;
+    position: relative;
+    top: 2px;
 }
 
 @keyframes blink {
-    from, to { background-color: #00ff00; }
-    50% { background-color: transparent; }
+    from, to { opacity: 1; }
+    50% { opacity: 0; }
 }
 
 /* Command Input */
-.input-line {
-    display: flex;
-    align-items: center;
-}
-
 .input-line input {
     flex: 1;
     background: transparent;
@@ -134,6 +147,26 @@ body {
     padding: 0;
     margin: 0;
     caret-color: #00ff00;
+    min-width: 10px;
+    caret-shape: block;
+}
+
+/* Hide the input's outline and make it blend with the terminal */
+.input-line input:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+/* Style for command output */
+.command {
+    color: #00ff00;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* Style for error messages */
+.error {
+    color: #ff5555;
 }
 
 /* Responsive Design */
