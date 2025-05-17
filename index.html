@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>term - MS-DOS Style Terminal</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="terminal">
+        <div class="terminal-header">
+            <span class="terminal-title">C:\> term</span>
+            <div class="terminal-controls">
+                <span class="control minimize">_</span>
+                <span class="control maximize">□</span>
+                <span class="control close">X</span>
+            </div>
+        </div>
+        <div class="terminal-body" id="terminal">
+            <div class="output">
+                <p>Microsoft(R) MS-DOS(R) Version 6.22</p>
+                <p>(C)Copyright Microsoft Corp 1981-1994. All rights reserved.</p>
+                <p class="prompt">C:\> <span class="cursor">_</span></p>
+            </div>
+        </div>
+    </div>
+    <script src="terminal.js"></script>
+</body>
+</html>
